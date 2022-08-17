@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simple-api
+  namespace: apps
+  labels:
+    app: simple-api
+spec:
+  selector:
+    matchLabels:
+      app: simple-api
+  #replicas: 2
+  template: #POD Configuration
+    metadata:
+      labels:
+        app: simple-api
+        service: simple-api
+    spec:
+      #      nodeSelector:
+      #        agentpool: vsdeploy
+      containers:
+        - name: simple-api
+          image: hub.docker.com/doniyozov/simple-api:latest
+          readinessProbe:
+            httpGet:
+              path: /Status
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 10
+            successThreshold: 1
+          resources:
+            limits:
+              cpu: "0.3"
+              memory: "500M"
+            requests:
+              cpu: "0.1"
+              memory: "200M"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+              protocol: TCP
+      #          env:
+      #            - name: CompanyId
+      #              value: simple-api
+      #            - name: AzureBlobContainerName
+      #              value: simple-api #container name must be lowercase
+      #            - name: AzureStorageConnectionString
+      #              valueFrom:
+      #                secretKeyRef:
+      #                  name: azure-blob-connection-string-secret
+      #                  key: connection-string
+      #            - name: SQLConnectionString
+      #              valueFrom:
+      #                secretKeyRef:
+      #                  name: sql-connection-string-secret
+      #                  key: connection-string
+      #          volumeMounts:
+      #            - name: volume
+      #              mountPath: /usr/share/vision
+#      imagePullSecrets:
+#        - name: eaglevision-secret
+#      volumes:
+#        - name: volume
+#          persistentVolumeClaim:
+#            claimName: vision-pv
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: simple-api
+  namespace: apps
+spec:
+  selector:
+    app: simple-api
+  ports:
+    - port: 80 #This port is the port which belongs to ClusterIP which will be exposed
+      targetPort: 80 #This port should match with the port application is targetting in this case: containerPort: 8002.
+      protocol: TCP
+---
+#The Ingress rules, must reside in the namespace where the app that they configure reside in this case it's in back-end
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/affinity: cookie
+    nginx.ingress.kubernetes.io/affinity-mode: persistent
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "360"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "360"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "360"
+    nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  name: simple-api
+  namespace: apptest
+spec:
+  rules:
+    - host: vision.20.241.130.115.nip.io
+      http:
+        paths:
+          - backend:
+              service:
+                name: simple-api
+                port:
+                  number: 8002
+            path: /Vision/Demo
+            pathType: Prefix

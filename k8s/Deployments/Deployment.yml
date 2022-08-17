@@ -96,7 +96,7 @@ metadata:
   namespace: apptest
 spec:
   rules:
-    - host: vision.20.241.130.115.nip.io
+    - host: simpleapi.20.241.130.115.nip.io
       http:
         paths:
           - backend:
@@ -104,5 +104,5 @@ spec:
                 name: simple-api
                 port:
                   number: 8002
-            path: /Vision/Demo
+            path: /api
             pathType: Prefix
